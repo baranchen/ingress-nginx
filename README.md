@@ -34,11 +34,17 @@
 ### Using Helm
 
 ```bash
-helm repo add ingress-nginx https://baranchen.github.io/ingress-nginx
-helm install ingress-nginx ingress-nginx/ingress-nginx \
-  --set controller.image.registry=ghcr.io/baranchen/ingress-nginx \
+helm install ingress-nginx oci://ghcr.io/baranchen/ingress-nginx/charts/ingress-nginx \
   --set controller.image.tag=v1.30.2
 ```
+
+> **Note:** Helm chart OCI publishing is not yet available.
+> Alternatively, clone the repo and install from source:
+> ```bash
+> helm install ingress-nginx charts/ingress-nginx \
+>   --set controller.image.registry=ghcr.io/baranchen/ingress-nginx \
+>   --set controller.image.tag=v1.30.2
+> ```
 
 ### Using kubectl
 
@@ -142,11 +148,17 @@ Do not file public issues for security vulnerabilities.
 ### 使用 Helm
 
 ```bash
-helm repo add ingress-nginx https://baranchen.github.io/ingress-nginx
-helm install ingress-nginx ingress-nginx/ingress-nginx \
-  --set controller.image.registry=ghcr.io/baranchen/ingress-nginx \
+helm install ingress-nginx oci://ghcr.io/baranchen/ingress-nginx/charts/ingress-nginx \
   --set controller.image.tag=v1.30.2
 ```
+
+> **注意：** Helm Chart OCI 发布尚未就绪。
+> 替代方案——克隆仓库后从源码安装：
+> ```bash
+> helm install ingress-nginx charts/ingress-nginx \
+>   --set controller.image.registry=ghcr.io/baranchen/ingress-nginx \
+>   --set controller.image.tag=v1.30.2
+> ```
 
 ### 使用 kubectl
 
