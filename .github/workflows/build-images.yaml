@@ -1,0 +1,107 @@
+name: Build and Push Images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'images/**'
+      - 'rootfs/**'
+      - 'TAG'
+      - 'NGINX_BASE'
+      - 'GOLANG_VERSION'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      go_version: ${{ steps.version.outputs.go_version }}
+      certgen_tag: ${{ steps.version.outputs.certgen_tag }}
+      owner: ${{ steps.version.outputs.owner }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: version
+        run: |
+          echo "tag=$(cat TAG)" >> "$GITHUB_OUTPUT"
+          echo "go_version=$(cat GOLANG_VERSION)" >> "$GITHUB_OUTPUT"
+          echo "certgen_tag=$(cat images/kube-webhook-certgen/TAG)" >> "$GITHUB_OUTPUT"
+          echo "owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+  nginx:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: images/nginx/rootfs
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ needs.prepare.outputs.owner }}/ingress-nginx/nginx:${{ needs.prepare.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  certgen:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: images/kube-webhook-certgen/rootfs
+          platforms: linux/amd64,linux/arm64
+          build-args: GOLANG_VERSION=${{ needs.prepare.outputs.go_version }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ needs.prepare.outputs.owner }}/ingress-nginx/kube-webhook-certgen:${{ needs.prepare.outputs.certgen_tag }}
+            ${{ env.REGISTRY }}/${{ needs.prepare.outputs.owner }}/ingress-nginx/kube-webhook-certgen:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  controller:
+    needs: [prepare, nginx]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: rootfs
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            BASE_IMAGE=${{ env.REGISTRY }}/${{ needs.prepare.outputs.owner }}/ingress-nginx/nginx:${{ needs.prepare.outputs.tag }}
+            VERSION=${{ needs.prepare.outputs.tag }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ needs.prepare.outputs.owner }}/ingress-nginx/controller:${{ needs.prepare.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ needs.prepare.outputs.owner }}/ingress-nginx/controller:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
