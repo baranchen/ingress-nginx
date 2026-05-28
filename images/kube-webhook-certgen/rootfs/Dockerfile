@@ -14,7 +14,7 @@
 
 ARG GOLANG_VERSION
 
-FROM --platform=$BUILDPLATFORM golang:${GOLANG_VERSION} AS builder
+FROM --platform=$BUILDPLATFORM docker.m.daocloud.io/library/golang:${GOLANG_VERSION} AS builder
 
 ARG BUILDPLATFORM
 ARG TARGETARCH
@@ -24,8 +24,7 @@ WORKDIR /workspace
 COPY . .
 RUN go mod tidy && CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -a -o kube-webhook-certgen main.go
 
-FROM --platform=$BUILDPLATFORM gcr.io/distroless/static:nonroot
-ARG BUILDPLATFORM
+FROM docker.m.daocloud.io/alpine:3.23
 ARG TARGETARCH
 
 LABEL org.opencontainers.image.source=https://github.com/kubernetes/ingress-nginx
