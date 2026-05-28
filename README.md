@@ -35,7 +35,9 @@
 
 ```bash
 helm repo add ingress-nginx https://baranchen.github.io/ingress-nginx
-helm install ingress-nginx ingress-nginx/ingress-nginx
+helm install ingress-nginx ingress-nginx/ingress-nginx \
+  --set controller.image.registry=ghcr.io/baranchen/ingress-nginx \
+  --set controller.image.tag=v1.30.2
 ```
 
 ### Using kubectl
@@ -57,8 +59,7 @@ docker buildx build --platform linux/amd64,linux/arm64 rootfs \
 
 # Build controller
 cd ../..
-make REGISTRY=your-registry TAG=v1.30.2 build
-make REGISTRY=your-registry TAG=v1.30.2 image
+make REGISTRY=your-registry TAG=v1.30.2 release
 ```
 
 ## Supported Versions
@@ -142,7 +143,9 @@ Do not file public issues for security vulnerabilities.
 
 ```bash
 helm repo add ingress-nginx https://baranchen.github.io/ingress-nginx
-helm install ingress-nginx ingress-nginx/ingress-nginx
+helm install ingress-nginx ingress-nginx/ingress-nginx \
+  --set controller.image.registry=ghcr.io/baranchen/ingress-nginx \
+  --set controller.image.tag=v1.30.2
 ```
 
 ### 使用 kubectl
@@ -164,8 +167,7 @@ docker buildx build --platform linux/amd64,linux/arm64 rootfs \
 
 # 构建控制器
 cd ../..
-make REGISTRY=your-registry TAG=v1.30.2 build
-make REGISTRY=your-registry TAG=v1.30.2 image
+make REGISTRY=your-registry TAG=v1.30.2 release
 ```
 
 ## 支持版本
