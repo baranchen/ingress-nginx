@@ -2,16 +2,7 @@
 
 aliases:
   ingress-nginx-maintainers:
-  - cpanato
-  - Gacko
-  - strongjz
-  - tao12345666333
+  - baranchen
 
   ingress-nginx-reviewers:
-  - cpanato
-  - Gacko
-  - strongjz
-  - tao12345666333
-
-  ingress-nginx-docs-maintainers:
-  - longwuyuan
+  - baranchen

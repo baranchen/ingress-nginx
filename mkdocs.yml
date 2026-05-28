@@ -1,6 +1,6 @@
 site_name: Ingress-Nginx Controller
-repo_name: "kubernetes/ingress-nginx"
-repo_url: https://github.com/kubernetes/ingress-nginx
+repo_name: "baranchen/ingress-nginx"
+repo_url: https://github.com/baranchen/ingress-nginx
 site_url: https://kubernetes.github.io/ingress-nginx
 edit_uri: edit/main/docs/
 

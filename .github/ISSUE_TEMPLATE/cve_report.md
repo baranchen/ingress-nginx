@@ -4,12 +4,12 @@ about: CVE reporting for ingress-nginx
 title: ''
 labels: kind/bug
 assignees:
-    - Gacko
-    - strongjz
+    - baranchen
 ---
 
 <!-- if you found something that impacts directly ingress-nginx and
-is not a public CVE yet, please reach out security@kubernetes.io" -->
+is not a public CVE yet, please open a GitHub Security Advisory instead:
+https://github.com/baranchen/ingress-nginx/security/advisories/new -->
 
 <!-- What scanner and version reported the CVE? -->
 
