@@ -29,6 +29,28 @@
 
 **Drop-in replacement** — no configuration changes required for existing installations.
 
+## Security Fixes
+
+### NGINX (upgraded from 1.27.1 to 1.30.2)
+
+| CVE | Severity | Description |
+|-----|----------|-------------|
+| **CVE-2026-42945** | Critical | Heap buffer overflow in `ngx_http_rewrite_module` (NGINX Rift) |
+| **CVE-2026-9256** | High | Buffer overflow vulnerability |
+| **CVE-2026-28755** | Medium | OCSP result bypass in stream module |
+| **CVE-2026-1642** | Medium | SSL upstream injection |
+| **CVE-2025-53859** | Medium | SSL-related vulnerability |
+| **CVE-2025-23419** | Medium | TLSv1.3 SNI session resumption bypass |
+
+### Ingress-NGINX Controller (upstream patches through v1.15.1)
+
+| CVE | Severity | Description |
+|-----|----------|-------------|
+| **CVE-2025-1974** | Critical (9.8) | IngressNightmare — unauthenticated RCE via admission webhook |
+| **CVE-2025-24514** | Medium (6.5) | DoS via validating admission controller |
+| **CVE-2025-1097** | High | IngressNightmare chain — auth-method injection |
+| **CVE-2025-1098** | High | IngressNightmare chain — configuration injection |
+
 ## Quick Start
 
 ### Using Helm
@@ -142,6 +164,28 @@ Do not file public issues for security vulnerabilities.
 | **CVE-2025-23419** | 回移补丁 | 已在上游修复 (1.27.4+) |
 
 **直接替换方案** — 无需修改任何配置即可从上游迁移。
+
+## 安全修复
+
+### NGINX（从 1.27.1 升级到 1.30.2）
+
+| CVE | 严重程度 | 描述 |
+|-----|----------|------|
+| **CVE-2026-42945** | 严重 | `ngx_http_rewrite_module` 堆缓冲区溢出（NGINX Rift） |
+| **CVE-2026-9256** | 高 | 缓冲区溢出漏洞 |
+| **CVE-2026-28755** | 中 | Stream 模块 OCSP 结果绕过 |
+| **CVE-2026-1642** | 中 | SSL 上游注入 |
+| **CVE-2025-53859** | 中 | SSL 相关漏洞 |
+| **CVE-2025-23419** | 中 | TLSv1.3 SNI 会话恢复绕过 |
+
+### Ingress-NGINX 控制器（上游补丁至 v1.15.1）
+
+| CVE | 严重程度 | 描述 |
+|-----|----------|------|
+| **CVE-2025-1974** | 严重 (9.8) | IngressNightmare — 通过准入 Webhook 实现未认证远程代码执行 |
+| **CVE-2025-24514** | 中 (6.5) | 通过验证准入控制器实现拒绝服务 |
+| **CVE-2025-1097** | 高 | IngressNightmare 攻击链 — 认证方式注入 |
+| **CVE-2025-1098** | 高 | IngressNightmare 攻击链 — 配置注入 |
 
 ## 快速开始
 
