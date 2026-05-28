@@ -2,6 +2,13 @@
 
 All New change are in [Changelog](./changelog)
 
+### 1.30.2 (Community Fork)
+
+* Upgrade NGINX from 1.27.1 to 1.30.2 (stable)
+* Remove CVE-2025-23419 patch (fixed upstream in NGINX 1.27.4+)
+* Rebase 34 OpenResty patches to NGINX 1.30.2
+* Update documentation for community fork
+
 ### 1.5.1
 
 * Upgrade NGINX to 1.21.6
