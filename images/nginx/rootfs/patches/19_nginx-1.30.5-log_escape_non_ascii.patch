@@ -93,17 +93,9 @@ diff --git a/src/http/modules/ngx_http_log_module.c b/src/http/modules/ngx_http_
  
      static uint32_t   escape[] = {
          0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
-@@ -1189,6 +1205,7 @@
- static size_t
- ngx_http_log_unescaped_variable_getlen(ngx_http_request_t *r, uintptr_t data)
- {
-+    ngx_http_log_loc_conf_t    *lcf;
-     ngx_http_variable_value_t  *value;
- 
-     value = ngx_http_get_indexed_variable(r, data);
-@@ -1222,7 +1239,13 @@
-     return ngx_cpymem(buf, value->data, value->len);
- }
+@@ -1096,7 +1112,13 @@
+         0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+     };
  
 +    if (lcf->escape_non_ascii) {
 +        ngx_memset(&escape[4], 0xff, sizeof(uint32_t) * 4);
@@ -112,10 +104,10 @@ diff --git a/src/http/modules/ngx_http_log_module.c b/src/http/modules/ngx_http_
 +        ngx_memzero(&escape[4], sizeof(uint32_t) * 4);
 +    }
 +
- static ngx_int_t
- ngx_http_log_check_length(ngx_http_request_t *r, u_char *buf, u_char *end,
-     size_t len)
-@@ -1284,6 +1307,7 @@
+     if (dst == NULL) {
+ 
+         /* find the number of the characters to be escaped */
+@@ -1284,6 +1306,7 @@
      }
  
      conf->open_file_cache = NGX_CONF_UNSET_PTR;
@@ -123,7 +115,7 @@ diff --git a/src/http/modules/ngx_http_log_module.c b/src/http/modules/ngx_http_
  
      return conf;
  }
-@@ -1298,6 +1322,8 @@
+@@ -1298,6 +1321,8 @@
      ngx_http_log_t            *log;
      ngx_http_log_fmt_t        *fmt;
      ngx_http_log_main_conf_t  *lmcf;
