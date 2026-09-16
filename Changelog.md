@@ -2,6 +2,12 @@
 
 All New change are in [Changelog](./changelog)
 
+### 1.30.5 (Community Fork)
+
+* Upgrade NGINX from 1.30.2 to 1.30.5 (stable)
+* Security fixes: CVE-2026-42055, CVE-2026-48142 (1.30.3); CVE-2026-42533, CVE-2026-60005, CVE-2026-56434 (1.30.4); CVE-2026-90439 (1.30.5)
+* Rebase log_escape_non_ascii patch (upstream log module refactored with buffer length checks)
+
 ### 1.30.2 (Community Fork)
 
 * Upgrade NGINX from 1.27.1 to 1.30.2 (stable)
