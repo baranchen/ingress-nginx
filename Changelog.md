@@ -2,6 +2,11 @@
 
 All New change are in [Changelog](./changelog)
 
+### 1.30.6 (Community Fork)
+
+* Upgrade NGINX from 1.30.5 to 1.30.6 (stable)
+* Security fixes: CVE-2026-15176, CVE-2026-93479, CVE-2026-95101, CVE-2026-97629, CVE-2026-97205 (1.30.6)
+
 ### 1.30.5 (Community Fork)
 
 * Upgrade NGINX from 1.30.2 to 1.30.5 (stable)

@@ -13,7 +13,7 @@ If you discover a security vulnerability, please report it privately:
 
 | Version | Supported |
 | ------- | --------- |
-| v1.30.5 | Yes       |
+| v1.30.6 | Yes       |
 
 ## Response Time
 
