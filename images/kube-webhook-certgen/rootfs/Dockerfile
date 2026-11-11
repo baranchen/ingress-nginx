@@ -24,7 +24,7 @@ WORKDIR /workspace
 COPY . .
 RUN go mod tidy && CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -a -o kube-webhook-certgen main.go
 
-FROM docker.m.daocloud.io/alpine:3.23
+FROM docker.m.daocloud.io/alpine:3.24
 ARG TARGETARCH
 
 LABEL org.opencontainers.image.source=https://github.com/kubernetes/ingress-nginx
