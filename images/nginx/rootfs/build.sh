@@ -394,6 +394,7 @@ echo "SecAuditLogStorageDir /var/log/audit/" >> /etc/nginx/modsecurity/modsecuri
 # Download owasp modsecurity crs
 cd /etc/nginx/
 
+rm -rf coreruleset owasp-modsecurity-crs
 retry git clone --depth=1 --branch $OWASP_MODSECURITY_CRS_VERSION https://github.com/coreruleset/coreruleset
 mv coreruleset owasp-modsecurity-crs
 cd owasp-modsecurity-crs
