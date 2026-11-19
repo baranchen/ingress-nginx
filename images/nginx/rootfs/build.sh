@@ -316,16 +316,32 @@ cmake -B build -G Ninja -Wno-dev \
 # Git tuning
 git config --global --add core.compression -1
 
+# Retry helper for network operations (git fetch can fail transiently in CI:
+# "cannot pread pack file: Bad address" / "invalid index-pack output").
+retry() {
+  n=0
+  until "$@"; do
+    n=$((n+1))
+    if [ "$n" -ge 3 ]; then
+      echo "ERROR: command failed after 3 attempts: $*" >&2
+      return 1
+    fi
+    echo "retrying ($((n+1))/3): $*" >&2
+    sleep 10
+  done
+}
+
 # Get Brotli source and deps
 cd "$BUILD_PATH"
-git clone --depth=100 https://github.com/google/ngx_brotli.git
+rm -rf ngx_brotli
+retry git clone --depth=100 https://github.com/google/ngx_brotli.git
 cd ngx_brotli
 git reset --hard a71f9312c2deb28875acc7bacfdd5695a111aa53
-git submodule init
-git submodule update
+retry git submodule update --init --recursive
 
 cd "$BUILD_PATH"
-git clone --depth=1 https://github.com/ssdeep-project/ssdeep
+rm -rf ssdeep
+retry git clone --depth=1 https://github.com/ssdeep-project/ssdeep
 cd ssdeep/
 
 ./bootstrap
@@ -336,11 +352,10 @@ make install
 
 # build modsecurity library
 cd "$BUILD_PATH"
-git clone -n https://github.com/owasp-modsecurity/ModSecurity
+rm -rf ModSecurity
+retry git clone --depth=1 --branch $MODSECURITY_LIB_VERSION https://github.com/owasp-modsecurity/ModSecurity
 cd ModSecurity/
-git checkout $MODSECURITY_LIB_VERSION
-git submodule init
-git submodule update
+retry git submodule update --init --recursive
 
 sh build.sh
 
@@ -379,7 +394,7 @@ echo "SecAuditLogStorageDir /var/log/audit/" >> /etc/nginx/modsecurity/modsecuri
 # Download owasp modsecurity crs
 cd /etc/nginx/
 
-git clone -b $OWASP_MODSECURITY_CRS_VERSION https://github.com/coreruleset/coreruleset
+retry git clone --depth=1 --branch $OWASP_MODSECURITY_CRS_VERSION https://github.com/coreruleset/coreruleset
 mv coreruleset owasp-modsecurity-crs
 cd owasp-modsecurity-crs
 
@@ -522,7 +537,15 @@ make install
 export OPENTELEMETRY_CONTRIB_COMMIT=8933841f0a7f8737f61404cf0a64acf6b079c8a5
 cd "$BUILD_PATH"
 
-git clone https://github.com/open-telemetry/opentelemetry-cpp-contrib.git opentelemetry-cpp-contrib-${OPENTELEMETRY_CONTRIB_COMMIT}
+git clone https://github.com/open-telemetry/opentelemetry-cpp-contrib.git opentelemetry-cpp-contrib-${OPENTELEMETRY_CONTRIB_COMMIT} || {
+  # full clone failed (large repo, transient network) — fall back to fetching only the pinned commit
+  git init -q opentelemetry-cpp-contrib-${OPENTELEMETRY_CONTRIB_COMMIT}
+  cd opentelemetry-cpp-contrib-${OPENTELEMETRY_CONTRIB_COMMIT}
+  git remote add origin https://github.com/open-telemetry/opentelemetry-cpp-contrib.git
+  retry git fetch --depth=1 origin ${OPENTELEMETRY_CONTRIB_COMMIT}
+  git checkout -q FETCH_HEAD
+  cd "$BUILD_PATH"
+}
 
 cd ${BUILD_PATH}/opentelemetry-cpp-contrib-${OPENTELEMETRY_CONTRIB_COMMIT}
 git reset --hard ${OPENTELEMETRY_CONTRIB_COMMIT}
