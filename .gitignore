@@ -62,3 +62,5 @@ tmp/
 test/junitreports/
 tests/__snapshot__
 *.tar.gz
+ci-artifacts/
+.docker-ci/

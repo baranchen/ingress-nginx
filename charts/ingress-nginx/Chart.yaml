@@ -1,9 +1,11 @@
 annotations:
   artifacthub.io/changes: |
-    - Upgrade NGINX from 1.30.5 to 1.30.6
+    - Upgrade NGINX from 1.30.6 to 1.30.7 (security fixes)
+    - Default controller image now pulled from ghcr.io/baranchen/ingress-nginx
+    - Admission webhook certgen image moved to ghcr.io/baranchen/ingress-nginx (digest pin removed)
   artifacthub.io/prerelease: "false"
 apiVersion: v2
-appVersion: 1.30.6
+appVersion: 1.30.7
 description: Ingress controller for Kubernetes using NGINX as a reverse proxy and
   load balancer
 home: https://github.com/baranchen/ingress-nginx
@@ -17,4 +19,4 @@ maintainers:
 name: ingress-nginx
 sources:
 - https://github.com/baranchen/ingress-nginx
-version: 4.30.6
+version: 4.30.7

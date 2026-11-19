@@ -5,7 +5,7 @@
 ### Community-Maintained Fork
 
 [![GitHub Release](https://img.shields.io/github/v/release/baranchen/ingress-nginx?style=for-the-badge&label=Release&color=blue)](https://github.com/baranchen/ingress-nginx/releases)
-[![NGINX](https://img.shields.io/badge/NGINX-1.30.6-green?style=for-the-badge&logo=nginx&logoColor=white)](https://nginx.org/)
+[![NGINX](https://img.shields.io/badge/NGINX-1.30.7-green?style=for-the-badge&logo=nginx&logoColor=white)](https://nginx.org/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](LICENSE)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-1.33%20%7C%201.34%20%7C%201.35-blue?style=for-the-badge&logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 
@@ -21,9 +21,9 @@
 
 ## What's Changed
 
-| | Upstream (v1.15.1) | This Fork (v1.30.6) |
+| | Upstream (v1.15.1) | This Fork (v1.30.7) |
 |---|---|---|
-| **NGINX** | 1.27.1 | **1.30.6** (stable) |
+| **NGINX** | 1.27.1 | **1.30.7** (stable) |
 | **OpenSSL** | 3.5.x | 3.5.6 |
 | **CVE-2025-23419** | Backported patch | Fixed upstream (1.27.4+) |
 
@@ -31,12 +31,22 @@
 
 ## Security Fixes
 
-### NGINX (upgraded from 1.27.1, currently 1.30.6)
+### NGINX (upgraded from 1.27.1, currently 1.30.7)
+
+> Severity ratings follow the official NGINX security advisories (major → High, medium → Medium, minor → Low).
 
 | CVE | Severity | Description |
 |-----|----------|-------------|
 | **CVE-2026-42945** | Critical | Heap buffer overflow in `ngx_http_rewrite_module` (NGINX Rift) |
 | **CVE-2026-15176** | Critical (9.2) | Heap buffer overflow when the request URI is changed by `rewrite` and then mapped to a file path via `alias` (fixed in 1.30.6) |
+| **CVE-2026-125283** | Low | Buffer overflow with `try_files` and `alias` in certain configurations (fixed in 1.30.7) |
+| **CVE-2026-123007** | High | HTTP/2 flow control window overflow, could segfault a worker process (fixed in 1.30.7) |
+| **CVE-2026-123633** | Medium | Use-after-free in HTTP/2 when worker_connections were not enough (fixed in 1.30.7) |
+| **CVE-2026-121810** | Medium | Use-after-free in HTTP/3 when worker_connections were not enough (fixed in 1.30.7) |
+| **CVE-2026-123634** | Medium | Use-after-free in resolver when the same name was resolved in subrequests (fixed in 1.30.7) |
+| **CVE-2026-118899** | High | Worker processes endless loop while reading the request body over SSL (fixed in 1.30.7) |
+| **CVE-2026-120967** | Medium | Stream module: client SSL certificates verified with default server config instead of SNI-selected virtual server (fixed in 1.30.7) |
+| **CVE-2026-123640** | Low | `ngx_stream_ssl_preread_module` misinterprets malformed ClientHello, potentially bypassing security restrictions (fixed in 1.30.7) |
 | **CVE-2026-9256** | High | Buffer overflow vulnerability |
 | **CVE-2026-42055** | High | Heap buffer overflow when proxying crafted requests to HTTP/2 or gRPC backends (fixed in 1.30.3) |
 | **CVE-2026-42533** | High | Heap buffer overflow when using `map` with regex matching (fixed in 1.30.4) |
@@ -68,7 +78,7 @@
 
 ```bash
 helm install ingress-nginx oci://ghcr.io/baranchen/ingress-nginx/charts/ingress-nginx \
-  --set controller.image.tag=v1.30.6
+  --set controller.image.tag=v1.30.7
 ```
 
 > **Note:** Helm chart OCI publishing is not yet available.
@@ -76,7 +86,7 @@ helm install ingress-nginx oci://ghcr.io/baranchen/ingress-nginx/charts/ingress-
 > ```bash
 > helm install ingress-nginx charts/ingress-nginx \
 >   --set controller.image.registry=ghcr.io/baranchen/ingress-nginx \
->   --set controller.image.tag=v1.30.6
+>   --set controller.image.tag=v1.30.7
 > ```
 
 ### Using kubectl
@@ -94,20 +104,20 @@ cd ingress-nginx
 # Build nginx base image
 cd images/nginx
 docker buildx build --platform linux/amd64,linux/arm64 rootfs \
-  --tag your-registry/ingress-nginx/nginx:v1.30.6 --push
+  --tag your-registry/ingress-nginx/nginx:v1.30.7 --push
 
 # Build controller
 cd ../..
-make REGISTRY=your-registry TAG=v1.30.6 release
+make REGISTRY=your-registry TAG=v1.30.7 release
 ```
 
 ## Supported Versions
 
 | Ingress-NGINX | Kubernetes | NGINX | Alpine | Helm Chart |
 |---|---|---|---|---|
-| **v1.30.6** | 1.35, 1.34, 1.33 | 1.30.6 | 3.23.3 | — |
+| **v1.30.7** | 1.35, 1.34, 1.33 | 1.30.7 | 3.23.3 | — |
 
-## NGINX Upgrade Highlights (1.27.1 → 1.30.6)
+## NGINX Upgrade Highlights (1.27.1 → 1.30.7)
 
 - **1.27.2** — SSL certificate caching, `ssl_session_log` directive
 - **1.27.3** — Upstream server `resolve` parameter, resolver in upstream blocks
@@ -119,7 +129,8 @@ make REGISTRY=your-registry TAG=v1.30.6 release
 - **1.30.3** — CVE-2026-42055 / CVE-2026-48142 fixes (HTTP/2 backend proxying, charset decoding)
 - **1.30.4** — CVE-2026-42533 / CVE-2026-60005 / CVE-2026-56434 fixes (map regex, slice, SSI)
 - **1.30.5** — CVE-2026-90439 fix (HTTP/3); always ignore QUIC transport parameters during SSL handshake
-- **1.30.6** — CVE-2026-15176 / CVE-2026-93479 / CVE-2026-95101 / CVE-2026-97629 / CVE-2026-97205 fixes (alias+rewrite overflow, string expression overflow, HTTP/3 request body injection, TLS session ticket forgery, AIO+SSI use-after-free) — latest stable
+- **1.30.6** — CVE-2026-15176 / CVE-2026-93479 / CVE-2026-95101 / CVE-2026-97629 / CVE-2026-97205 fixes (alias+rewrite overflow, string expression overflow, HTTP/3 request body injection, TLS session ticket forgery, AIO+SSI use-after-free)
+- **1.30.7** — CVE-2026-125283 / CVE-2026-123007 / CVE-2026-123633 / CVE-2026-121810 / CVE-2026-123634 / CVE-2026-118899 / CVE-2026-120967 / CVE-2026-123640 fixes (try_files+alias overflow, HTTP/2 flow control, HTTP/2 & HTTP/3 worker_connections UAF, resolver UAF, SSL request-body endless loop, stream SSL verify & ssl_preread ClientHello) — latest stable
 
 ## Usage Warning
 
@@ -191,9 +202,9 @@ Do not file public issues for security vulnerabilities.
 
 ## 与上游的差异
 
-| | 上游 (v1.15.1) | 本分支 (v1.30.6) |
+| | 上游 (v1.15.1) | 本分支 (v1.30.7) |
 |---|---|---|
-| **NGINX** | 1.27.1 | **1.30.6** (stable) |
+| **NGINX** | 1.27.1 | **1.30.7** (stable) |
 | **OpenSSL** | 3.5.x | 3.5.6 |
 | **CVE-2025-23419** | 回移补丁 | 已在上游修复 (1.27.4+) |
 
@@ -201,12 +212,22 @@ Do not file public issues for security vulnerabilities.
 
 ## 安全修复
 
-### NGINX（从 1.27.1 升级，当前 1.30.6）
+### NGINX（从 1.27.1 升级，当前 1.30.7）
+
+> 严重程度依据 NGINX 官方安全通告（major→高，medium→中，minor→低）。
 
 | CVE | 严重程度 | 描述 |
 |-----|----------|------|
 | **CVE-2026-42945** | 严重 | `ngx_http_rewrite_module` 堆缓冲区溢出（NGINX Rift） |
 | **CVE-2026-15176** | 严重 (9.2) | 请求 URI 被 `rewrite` 修改后再经 `alias` 映射为文件路径时堆缓冲区溢出（1.30.6 修复） |
+| **CVE-2026-125283** | 低 | 特定配置下 `try_files` 与 `alias` 共用时缓冲区溢出（1.30.7 修复） |
+| **CVE-2026-123007** | 高 | HTTP/2 流控窗口溢出，可致 worker 进程段错误（1.30.7 修复） |
+| **CVE-2026-123633** | 中 | HTTP/2 在 worker_connections 不足时释放后使用（1.30.7 修复） |
+| **CVE-2026-121810** | 中 | HTTP/3 在 worker_connections 不足时释放后使用（1.30.7 修复） |
+| **CVE-2026-123634** | 中 | `resolver` 在子请求中同时解析同一名称时释放后使用（1.30.7 修复） |
+| **CVE-2026-118899** | 高 | SSL 读取请求体时 worker 进程死循环（1.30.7 修复） |
+| **CVE-2026-120967** | 中 | Stream 模块：客户端 SSL 证书用默认服务器配置校验而非 SNI 选中的虚拟服务器（1.30.7 修复） |
+| **CVE-2026-123640** | 低 | `ngx_stream_ssl_preread_module` 错误解析畸形 ClientHello，可能绕过安全限制（1.30.7 修复） |
 | **CVE-2026-9256** | 高 | 缓冲区溢出漏洞 |
 | **CVE-2026-42055** | 高 | 向 HTTP/2 或 gRPC 后端代理特制请求时堆缓冲区溢出（1.30.3 修复） |
 | **CVE-2026-42533** | 高 | `map` 正则匹配堆缓冲区溢出（1.30.4 修复） |
@@ -238,7 +259,7 @@ Do not file public issues for security vulnerabilities.
 
 ```bash
 helm install ingress-nginx oci://ghcr.io/baranchen/ingress-nginx/charts/ingress-nginx \
-  --set controller.image.tag=v1.30.6
+  --set controller.image.tag=v1.30.7
 ```
 
 > **注意：** Helm Chart OCI 发布尚未就绪。
@@ -246,7 +267,7 @@ helm install ingress-nginx oci://ghcr.io/baranchen/ingress-nginx/charts/ingress-
 > ```bash
 > helm install ingress-nginx charts/ingress-nginx \
 >   --set controller.image.registry=ghcr.io/baranchen/ingress-nginx \
->   --set controller.image.tag=v1.30.6
+>   --set controller.image.tag=v1.30.7
 > ```
 
 ### 使用 kubectl
@@ -264,20 +285,20 @@ cd ingress-nginx
 # 构建 nginx 基础镜像
 cd images/nginx
 docker buildx build --platform linux/amd64,linux/arm64 rootfs \
-  --tag your-registry/ingress-nginx/nginx:v1.30.6 --push
+  --tag your-registry/ingress-nginx/nginx:v1.30.7 --push
 
 # 构建控制器
 cd ../..
-make REGISTRY=your-registry TAG=v1.30.6 release
+make REGISTRY=your-registry TAG=v1.30.7 release
 ```
 
 ## 支持版本
 
 | Ingress-NGINX | Kubernetes | NGINX | Alpine | Helm Chart |
 |---|---|---|---|---|
-| **v1.30.6** | 1.35, 1.34, 1.33 | 1.30.6 | 3.23.3 | — |
+| **v1.30.7** | 1.35, 1.34, 1.33 | 1.30.7 | 3.23.3 | — |
 
-## NGINX 升级要点 (1.27.1 → 1.30.6)
+## NGINX 升级要点 (1.27.1 → 1.30.7)
 
 - **1.27.2** — SSL 证书缓存、`ssl_session_log` 指令
 - **1.27.3** — Upstream 服务器 `resolve` 参数、upstream 块中的 resolver
@@ -289,7 +310,8 @@ make REGISTRY=your-registry TAG=v1.30.6 release
 - **1.30.3** — CVE-2026-42055 / CVE-2026-48142 修复（HTTP/2 后端代理、charset 解码）
 - **1.30.4** — CVE-2026-42533 / CVE-2026-60005 / CVE-2026-56434 修复（map 正则、slice、SSI）
 - **1.30.5** — CVE-2026-90439 修复（HTTP/3）；SSL 连接中一律忽略 QUIC transport parameters 扩展
-- **1.30.6** — CVE-2026-15176 / CVE-2026-93479 / CVE-2026-95101 / CVE-2026-97629 / CVE-2026-97205 修复（alias+rewrite 溢出、字符串表达式溢出、HTTP/3 请求体注入、TLS 会话票据伪造、AIO+SSI 释放后使用）— 最新稳定版
+- **1.30.6** — CVE-2026-15176 / CVE-2026-93479 / CVE-2026-95101 / CVE-2026-97629 / CVE-2026-97205 修复（alias+rewrite 溢出、字符串表达式溢出、HTTP/3 请求体注入、TLS 会话票据伪造、AIO+SSI 释放后使用）
+- **1.30.7** — CVE-2026-125283 / CVE-2026-123007 / CVE-2026-123633 / CVE-2026-121810 / CVE-2026-123634 / CVE-2026-118899 / CVE-2026-120967 / CVE-2026-123640 修复（try_files+alias 溢出、HTTP/2 流控、HTTP/2 与 HTTP/3 worker_connections 释放后使用、resolver 释放后使用、SSL 请求体死循环、stream SSL 校验与 ssl_preread ClientHello）— 最新稳定版
 
 ## 使用警告
 

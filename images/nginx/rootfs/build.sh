@@ -18,7 +18,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-export NGINX_VERSION=1.30.6
+export NGINX_VERSION=1.30.7
 
 # Check for recent changes: https://github.com/vision5/ngx_devel_kit/compare/v0.3.3...master
 export NDK_VERSION=v0.3.3
@@ -121,7 +121,7 @@ get_src()
 
   echo "Downloading $url"
 
-  curl -sSL "$url" -o "$f"
+  curl -sSL --retry 5 --retry-delay 3 --retry-all-errors "$url" -o "$f"
   # TODO: Reenable checksum verification but make it smarter
   # echo "$hash  $f" | sha256sum -c - || exit 10
   if [ ! -z "$dest" ]; then
@@ -189,7 +189,7 @@ mkdir --verbose -p "$BUILD_PATH"
 cd "$BUILD_PATH"
 
 # download, verify and extract the source files
-get_src 3cf46f5ed7504d460125866b7bea99fb357f31d887e2e63b35503310e9b8b6c8 \
+get_src 2565b5c837050e958f70fb0f73c48e2bca4542ad349fd356f46fb0c72610bc6e \
         "https://nginx.org/download/nginx-$NGINX_VERSION.tar.gz"
 
 get_src aa961eafb8317e0eb8da37eb6e2c9ff42267edd18b56947384e719b85188f58b \
