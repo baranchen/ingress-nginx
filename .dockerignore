@@ -1,0 +1,20 @@
+# 构建上下文瘦身：仓库根上下文只用于 build/ci/Dockerfile.builder（编译控制器二进制）。
+# .cache/.modcache 合计约 2GB，.git 约 150MB，必须排除，否则 docker build 会先打包再上传。
+.git
+.cache
+.modcache
+.gocache
+tmp
+bin
+rootfs/bin
+ci-artifacts
+docs
+charts
+deploy
+test
+images
+*.tar.gz
+*.log
+coverage.txt
+cover.out
+site

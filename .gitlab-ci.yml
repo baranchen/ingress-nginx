@@ -1,0 +1,181 @@
+# ingress-nginx Fork 的 GitLab CI
+#
+# 架构(2026-11 v1.30.7 发布定型):
+#   镜像构建只在 GitHub Actions(build-images.yaml,双架构 QEMU)进行;
+#   本 pipeline 的 tag job 不再本地构建,而是把 GHCR 已验证的镜像
+#   manifest 级复制到 Harbor(ci/publish-harbor.sh),两边 bit-for-bit 同源。
+#
+# 结构三段式:
+#   日常 / MR        → 测试门禁(不构建、不部署)
+#   push 版本 tag    → 测试门禁 + GHCR→Harbor 分发(前置:GitHub workflow 已绿)
+#   push deploy-*    → 仅人工触发的部署占位 job(当前不自动改生产)
+#
+# Runner:复用 25 机(172.29.13.25)docker executor + 宿主 docker socket。
+#   - job 不指定 tags,Runner 需勾选 "Run untagged jobs"
+#   - publish job 需要 docker buildx;缺失时自动从 github 下载(内网受限时配代理变量)
+#   - 复制的是 GHCR 成品,无需访问 nginx.org,网络要求远低于本地构建
+#
+# 凭证(GitLab Settings → CI/CD → Variables,Masked):
+#   HARBOR_USER / HARBOR_PASS   对 library 项目有 push 权限的账号
+#   TEST_IMAGE                  可选,覆盖测试镜像(内网镜像不可达时改指 Harbor 镜像)
+
+stages: [test, build, deploy]
+
+.changes-paths: &changes-paths
+  - ".gitlab-ci.yml"
+  - "**/*.go"
+  - "go.mod"
+  - "go.sum"
+  - "GOLANG_VERSION"
+  - "TAG"
+  - "NGINX_BASE"
+  - "rootfs/**/*"
+  - "images/**/*"
+  - "charts/**/*"
+  - "build/ci/**/*"
+  - "ci/**/*"
+
+.test-rules: &test-rules
+  - if: '$CI_COMMIT_BRANCH == "main"'
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+    changes: *changes-paths
+  # 版本 tag 也跑门禁（build-images 依赖这些 job）；deploy-* 不跑测试
+  - if: '$CI_COMMIT_TAG && $CI_COMMIT_TAG !~ /^deploy-/'
+
+variables:
+  PKG: "k8s.io/ingress-nginx"
+  GOFLAGS: "-buildvcs=false"
+  # Harbor：沿用 library 项目下已有的 ingress-nginx/ 路径（v1.30.2/1.30.5/1.30.6 已在仓）
+  REG: "reg.yondervision.com.cn:8081"
+  NS: "library/ingress-nginx"
+  # 与 build/run-in-docker.sh 一致；内网拉不到时可覆盖为 Harbor 镜像
+  TEST_IMAGE: "registry.k8s.io/ingress-nginx/e2e-test-runner:v2.2.9@sha256:6eda6a8d17ff65c5af647abb0714b882047b77d18161712d77daf5f610fd4020"
+  GIT_DEPTH: "20"
+
+workflow:
+  rules:
+    # deploy-* tag 只跑 deploy 占位 job
+    - if: '$CI_COMMIT_TAG =~ /^deploy-/'
+    # 版本 tag：测试 + 构建推送
+    - if: '$CI_COMMIT_TAG'
+    # main push：全量测试门禁
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    # MR → main：路径命中才跑
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+      changes: *changes-paths
+    - when: never
+
+# ---------------------------------------------------------------- test
+# 镜像内已带 Go、etcd、kube-apiserver、Helm、resty/busted（upstream e2e-test-runner），
+# 因此可以直接跑 test.sh / test-lua.sh，不需要再嵌套 docker run。
+go-test:
+  stage: test
+  image: $TEST_IMAGE
+  needs: []
+  rules: *test-rules
+  variables:
+    # 与 build/build.sh 一致；同时避免 cmd/plugin 测试二进制走 cgo 外部链接（镜像内无 ld）
+    CGO_ENABLED: "0"
+  before_script:
+    # cmd/nginx 的 TestHandleSigterm 依赖这些目录（正常由容器入口创建，测试里不会）
+    - mkdir -p /tmp/nginx /etc/ingress-controller/geoip /etc/ingress-controller/auth /etc/ingress-controller/ssl /etc/ingress-controller/telemetry
+  script:
+    - go version
+    - bash test/test.sh
+  timeout: 1h
+
+lua-test:
+  stage: test
+  image: $TEST_IMAGE
+  needs: []
+  rules: *test-rules
+  script:
+    - bash test/test-lua.sh
+  timeout: 30m
+
+chart-lint:
+  stage: test
+  image: $TEST_IMAGE
+  needs: []
+  rules: *test-rules
+  script:
+    # 只做语法/渲染校验，不做 helm-docs 重新生成（README 漂移问题单独处理）
+    - helm lint charts/ingress-nginx
+    - helm template ingress-nginx charts/ingress-nginx >/dev/null
+  timeout: 15m
+
+# ---------------------------------------------------------------- build
+# GHCR → Harbor 分发:不本地构建,复制 GitHub Actions 的已验证产物(双架构)。
+# 前置条件:GitHub 上 build-images workflow 对该 tag 已成功
+#   gh run list --workflow=build-images.yaml
+publish-images:
+  stage: build
+  image: docker:24
+  needs:
+    - go-test
+    - lua-test
+    - chart-lint
+  rules:
+    - if: '$CI_COMMIT_TAG && $CI_COMMIT_TAG !~ /^deploy-/'
+  before_script:
+    - docker info >/dev/null
+    - '[ -n "${HARBOR_USER:-}" ] && [ -n "${HARBOR_PASS:-}" ] || { echo "缺少 HARBOR_USER / HARBOR_PASS（GitLab CI Variables）"; exit 1; }'
+    - echo "$HARBOR_PASS" | docker login "$REG" -u "$HARBOR_USER" --password-stdin
+    # buildx 缺失时自动安装(内网受限走 BUILDX_PROXY)
+    - |
+      if ! docker buildx version >/dev/null 2>&1; then
+        mkdir -p ~/.docker/cli-plugins
+        v=0.14.0
+        url="https://github.com/docker/buildx/releases/download/v${v}/buildx-v${v}.linux-amd64"
+        [ -n "${BUILDX_PROXY:-}" ] && export https_proxy="$BUILDX_PROXY" http_proxy="$BUILDX_PROXY"
+        curl -sSL --retry 3 -o ~/.docker/cli-plugins/docker-buildx "$url"
+        chmod +x ~/.docker/cli-plugins/docker-buildx
+        docker buildx version
+      fi
+  script:
+    # 保留 v 前缀:Harbor/GHCR/chart 的 tag 均为 v1.30.7 形态
+    - TAG="${CI_COMMIT_TAG}" sh ci/publish-harbor.sh
+  after_script:
+    - docker logout "$REG" || true
+    - docker image prune -f || true
+  artifacts:
+    when: always
+    paths:
+      - ci-artifacts/
+    expire_in: 90 days
+  timeout: 30m
+
+# ---------------------------------------------------------------- deploy
+# 当前决策：不自动改生产。该 job 仅做「镜像是否真的在 Harbor 里」的只读校验，
+# 并打印手工 helm 命令；click 之后不会碰集群。后续接入 kubeconfig 时在这里扩展。
+deploy-manual:
+  stage: deploy
+  image: docker:24
+  needs: []
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^deploy-/'
+      when: manual
+  allow_failure: false
+  variables:
+    DEPLOY_NAMESPACE: "ingress-nginx"
+  before_script:
+    - '[ -n "${HARBOR_USER:-}" ] && [ -n "${HARBOR_PASS:-}" ] || { echo "缺少 HARBOR_USER / HARBOR_PASS（GitLab CI Variables）"; exit 1; }'
+    - echo "$HARBOR_PASS" | docker login "$REG" -u "$HARBOR_USER" --password-stdin
+  script:
+    - VER="${CI_COMMIT_TAG#deploy-}"
+    - NGINX_TAG="${NGINX_TAG:-$VER}"
+    - CERTGEN_TAG=$(cat images/kube-webhook-certgen/TAG)
+    - docker manifest inspect "$REG/$NS/nginx:$NGINX_TAG" >/dev/null
+    - docker manifest inspect "$REG/$NS/controller:$VER" >/dev/null
+    - docker manifest inspect "$REG/$NS/kube-webhook-certgen:$CERTGEN_TAG" >/dev/null
+    - echo "镜像已在 Harbor 就绪（$VER / certgen $CERTGEN_TAG）"
+    - echo "自动部署未启用。手工执行："
+    - echo "  helm upgrade --install ingress-nginx charts/ingress-nginx \\"
+    - echo "    -n $DEPLOY_NAMESPACE \\"
+    - echo "    --set controller.image.repository=$REG/$NS/controller \\"
+    - echo "    --set controller.image.tag=$VER \\"
+    - echo "    --set controller.admissionWebhooks.patch.image.repository=$REG/$NS/kube-webhook-certgen \\"
+    - echo "    --set controller.admissionWebhooks.patch.image.tag=$CERTGEN_TAG \\"
+    - echo "    --set controller.admissionWebhooks.patch.image.digest="
+  after_script:
+    - docker logout "$REG" || true
