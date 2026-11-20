@@ -2,24 +2,21 @@
 #
 # 架构(2026-11 v1.30.7 发布定型):
 #   镜像构建只在 GitHub Actions(build-images.yaml,双架构 QEMU)进行;
-#   本 pipeline 的 tag job 不再本地构建,而是把 GHCR 已验证的镜像
-#   manifest 级复制到 Harbor(ci/publish-harbor.sh),两边 bit-for-bit 同源。
+#   Harbor 分发由本地脚本 ci/publish-harbor.sh 完成(GHCR manifest 级复制),
+#   不依赖 GitLab CI。
 #
-# 结构三段式:
-#   日常 / MR        → 测试门禁(不构建、不部署)
-#   push 版本 tag    → 测试门禁 + GHCR→Harbor 分发(前置:GitHub workflow 已绿)
-#   push deploy-*    → 仅人工触发的部署占位 job(当前不自动改生产)
+# 本 pipeline 只承担测试门禁:
+#   日常 / MR / push main → go-test / lua-test / chart-lint
+#   deploy-* tag          → 人工触发的只读校验(镜像是否在 Harbor)
 #
 # Runner:复用 25 机(172.29.13.25)docker executor + 宿主 docker socket。
 #   - job 不指定 tags,Runner 需勾选 "Run untagged jobs"
-#   - publish job 需要 docker buildx;缺失时自动从 github 下载(内网受限时配代理变量)
-#   - 复制的是 GHCR 成品,无需访问 nginx.org,网络要求远低于本地构建
 #
 # 凭证(GitLab Settings → CI/CD → Variables,Masked):
-#   HARBOR_USER / HARBOR_PASS   对 library 项目有 push 权限的账号
+#   HARBOR_USER / HARBOR_PASS   deploy 校验 job 用(对 library 项目可读)
 #   TEST_IMAGE                  可选,覆盖测试镜像(内网镜像不可达时改指 Harbor 镜像)
 
-stages: [test, build, deploy]
+stages: [test, deploy]
 
 .changes-paths: &changes-paths
   - ".gitlab-ci.yml"
@@ -39,7 +36,7 @@ stages: [test, build, deploy]
   - if: '$CI_COMMIT_BRANCH == "main"'
   - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
     changes: *changes-paths
-  # 版本 tag 也跑门禁（build-images 依赖这些 job）；deploy-* 不跑测试
+  # 版本 tag 也跑门禁；deploy-* 不跑测试
   - if: '$CI_COMMIT_TAG && $CI_COMMIT_TAG !~ /^deploy-/'
 
 variables:
@@ -104,50 +101,9 @@ chart-lint:
     - helm template ingress-nginx charts/ingress-nginx >/dev/null
   timeout: 15m
 
-# ---------------------------------------------------------------- build
-# GHCR → Harbor 分发:不本地构建,复制 GitHub Actions 的已验证产物(双架构)。
-# 前置条件:GitHub 上 build-images workflow 对该 tag 已成功
-#   gh run list --workflow=build-images.yaml
-publish-images:
-  stage: build
-  image: docker:24
-  needs:
-    - go-test
-    - lua-test
-    - chart-lint
-  rules:
-    - if: '$CI_COMMIT_TAG && $CI_COMMIT_TAG !~ /^deploy-/'
-  before_script:
-    - docker info >/dev/null
-    - '[ -n "${HARBOR_USER:-}" ] && [ -n "${HARBOR_PASS:-}" ] || { echo "缺少 HARBOR_USER / HARBOR_PASS（GitLab CI Variables）"; exit 1; }'
-    - echo "$HARBOR_PASS" | docker login "$REG" -u "$HARBOR_USER" --password-stdin
-    # buildx 缺失时自动安装(内网受限走 BUILDX_PROXY)
-    - |
-      if ! docker buildx version >/dev/null 2>&1; then
-        mkdir -p ~/.docker/cli-plugins
-        v=0.14.0
-        url="https://github.com/docker/buildx/releases/download/v${v}/buildx-v${v}.linux-amd64"
-        [ -n "${BUILDX_PROXY:-}" ] && export https_proxy="$BUILDX_PROXY" http_proxy="$BUILDX_PROXY"
-        curl -sSL --retry 3 -o ~/.docker/cli-plugins/docker-buildx "$url"
-        chmod +x ~/.docker/cli-plugins/docker-buildx
-        docker buildx version
-      fi
-  script:
-    # 保留 v 前缀:Harbor/GHCR/chart 的 tag 均为 v1.30.7 形态
-    - TAG="${CI_COMMIT_TAG}" sh ci/publish-harbor.sh
-  after_script:
-    - docker logout "$REG" || true
-    - docker image prune -f || true
-  artifacts:
-    when: always
-    paths:
-      - ci-artifacts/
-    expire_in: 90 days
-  timeout: 30m
-
 # ---------------------------------------------------------------- deploy
-# 当前决策：不自动改生产。该 job 仅做「镜像是否真的在 Harbor 里」的只读校验，
-# 并打印手工 helm 命令；click 之后不会碰集群。后续接入 kubeconfig 时在这里扩展。
+# deploy-* tag:人工触发的只读校验(镜像是否真的在 Harbor 里),不自动改生产。
+# Harbor 的日常分发走本地 ci/publish-harbor.sh,不经此 pipeline。
 deploy-manual:
   stage: deploy
   image: docker:24

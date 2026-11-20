@@ -83,14 +83,15 @@ docker run --rm --platform linux/amd64 --entrypoint /nginx-ingress-controller \
 
 三个输出都应含新版本号。
 
-### 5. 分发到 Harbor(二选一)
+### 5. 分发到 Harbor(本地脚本,唯一路径)
 
 ```bash
-# A. 本地(需 docker login reg.yondervision.com.cn:8081)
+# 前置:docker login reg.yondervision.com.cn:8081
 TAG=v$NEW sh ci/publish-harbor.sh
-# B. GitLab tag 触发(需 .gitlab-ci.yml 已在 gitlab/main,tag 同步推过去)
-git push gitlab v$NEW   # pipeline: 测试门禁 → publish-images → Harbor
+# 幂等可重跑;自动验证双架构;~20 秒
 ```
+
+> GitLab CI 只承担测试门禁(MR/push),不参与构建与分发。
 
 ### 6. GitHub 收尾
 
