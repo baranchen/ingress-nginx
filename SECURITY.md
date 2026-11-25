@@ -13,7 +13,8 @@ If you discover a security vulnerability, please report it privately:
 
 | Version | Supported |
 | ------- | --------- |
-| v1.30.7 | Yes       |
+| v1.30.8 | Yes       |
+| v1.30.7 | No (CVE-2026-132779) |
 
 ## Response Time
 

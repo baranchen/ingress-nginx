@@ -186,7 +186,11 @@ docker run --rm --network host alpine:3.23.3 sh -c \
 
 ---
 
-## 7. 发版 SOP（下次照此敲）
+## 7. 发版 SOP（已废弃）
+
+> ⚠️ **本节已废弃，不要再照此操作。** 现行流程见 [docs/nginx-upgrade-runbook.md](nginx-upgrade-runbook.md)：
+> 构建只在 GitHub Actions，分发只走本地 `ci/publish-harbor.sh`，GitLab CI 不参与构建与分发。
+> 本节保留仅作历史参考（其中"版本 tag 触发 GitLab 构建推送 Harbor"的描述已不成立）。
 
 以发布 `v1.30.7` 为例。注意：**CI 在 GitLab 上，必须推 `gitlab` 远端**（`origin` 是上游 kubernetes/ingress-nginx，推不上去）。
 
